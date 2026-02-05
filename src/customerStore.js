@@ -3,6 +3,7 @@
 function createCustomerStore() {
 	const customers = new Map(); // id -> customer
 	let nextId = 1;
+	console.log("Testing here")
 
 	function createCustomer({ name, email }) {
 		if (!name) throw new Error("name is required");

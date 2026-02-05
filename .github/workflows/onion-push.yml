@@ -27,9 +27,7 @@ jobs:
               working-directory: .
 
             # IMPORTANT: ensure your jest config outputs junit.xml and lcov.info
-
             # junit.xml: ./junit.xml
-
             # lcov: ./coverage/lcov.info
 
             - name: Push reports to Onion

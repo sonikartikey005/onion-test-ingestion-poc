@@ -1,0 +1,49 @@
+name: Unit Tests + Push to Onion
+
+on:
+    push:
+        branches: ['main']
+    pull_request:
+
+jobs:
+    test-and-push:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+
+            - name: Install
+              run: npm ci
+              working-directory: .
+
+            - name: Run tests + coverage (generate junit + lcov)
+              run: npm test -- --coverage
+              working-directory: .
+
+            # IMPORTANT: ensure your jest config outputs junit.xml and lcov.info
+
+            # junit.xml: ./junit.xml
+
+            # lcov: ./coverage/lcov.info
+
+            - name: Push reports to Onion
+              env:
+                  ONION_BASE_URL: ${{ secrets.ONION_BASE_URL }}
+                  ONION_INGEST_TOKEN: ${{ secrets.ONION_INGEST_TOKEN }}
+                  ONION_PROJECT_ID: ${{ secrets.ONION_PROJECT_ID }}
+                  GIT_BRANCH: ${{ github.ref_name }}
+                  GIT_SHA: ${{ github.sha }}
+              run: |
+                  curl -i -X POST "$ONION_BASE_URL/ingest/runs" \
+                    -H "Authorization: Bearer $ONION_INGEST_TOKEN" \
+                    -F "projectId=$ONION_PROJECT_ID" \
+                    -F "branch=$GIT_BRANCH" \
+                    -F "commit=$GIT_SHA" \
+                    -F "junit=@junit.xml" \
+                    -F "lcov=@coverage/lcov.info"

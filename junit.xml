@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="4" failures="0" errors="0" time="11.153">
+  <testsuite name="CustomerStore" errors="0" failures="0" skipped="0" timestamp="2026-02-05T16:43:25" time="8.394" tests="4">
+    <testcase classname="CustomerStore creates and fetches a customer" name="CustomerStore creates and fetches a customer" time="0.02">
+    </testcase>
+    <testcase classname="CustomerStore updates a customer" name="CustomerStore updates a customer" time="0.004">
+    </testcase>
+    <testcase classname="CustomerStore deletes a customer" name="CustomerStore deletes a customer" time="0.006">
+    </testcase>
+    <testcase classname="CustomerStore throws if creating customer without name" name="CustomerStore throws if creating customer without name" time="0.118">
+    </testcase>
+  </testsuite>
+</testsuites>

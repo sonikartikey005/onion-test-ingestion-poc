@@ -26,11 +26,38 @@ jobs:
               run: npm test -- --coverage
               working-directory: .
 
-            # IMPORTANT: ensure your jest config outputs junit.xml and lcov.info
-            # junit.xml: ./junit.xml
-            # lcov: ./coverage/lcov.info
+            # ---- DEBUG START ----
+            - name: Debug - show workspace + report files
+              run: |
+                  echo "Branch: $GIT_BRANCH"
+                  echo "SHA: $GIT_SHA"
+                  echo "Repo: $GITHUB_REPOSITORY"
+                  echo "Runner pwd:"
+                  pwd
 
-            - name: Push reports to Onion
+                  echo "List root files:"
+                  ls -la
+
+                  echo "List coverage folder:"
+                  ls -la coverage || true
+
+                  echo "Check junit.xml exists:"
+                  test -f junit.xml && echo "✅ junit.xml found" || (echo "❌ junit.xml NOT found" && exit 1)
+
+                  echo "Check coverage/lcov.info exists:"
+                  test -f coverage/lcov.info && echo "✅ coverage/lcov.info found" || (echo "❌ coverage/lcov.info NOT found" && exit 1)
+
+                  echo "Preview junit.xml (first 20 lines):"
+                  head -n 20 junit.xml || true
+
+                  echo "Preview lcov.info (first 20 lines):"
+                  head -n 20 coverage/lcov.info || true
+              env:
+                  GIT_BRANCH: ${{ github.ref_name }}
+                  GIT_SHA: ${{ github.sha }}
+            # ---- DEBUG END ----
+
+            - name: Push reports to Onion (fail if upload fails)
               env:
                   ONION_BASE_URL: ${{ secrets.ONION_BASE_URL }}
                   ONION_INGEST_TOKEN: ${{ secrets.ONION_INGEST_TOKEN }}
@@ -38,10 +65,37 @@ jobs:
                   GIT_BRANCH: ${{ github.ref_name }}
                   GIT_SHA: ${{ github.sha }}
               run: |
-                  curl -i -X POST "$ONION_BASE_URL/ingest/runs" \
+                  set -euo pipefail
+
+                  # Remove trailing slash if user stored it in the secret
+                  BASE="${ONION_BASE_URL%/}"
+
+                  echo "ONION_BASE_URL (masked): ${BASE:0:25}... (len=${#BASE})"
+                  echo "ONION_PROJECT_ID: $ONION_PROJECT_ID"
+                  echo "GIT_BRANCH: $GIT_BRANCH"
+                  echo "GIT_SHA: $GIT_SHA"
+
+                  echo "Calling Onion ingest endpoint: $BASE/ingest/runs"
+
+                  # --fail-with-body makes curl exit non-zero on 4xx/5xx AND prints response body.
+                  # --retry helps with ngrok cold starts / short blips.
+                  curl -sS --fail-with-body --retry 3 --retry-delay 2 \
+                    -X POST "$BASE/ingest/runs" \
                     -H "Authorization: Bearer $ONION_INGEST_TOKEN" \
                     -F "projectId=$ONION_PROJECT_ID" \
                     -F "branch=$GIT_BRANCH" \
                     -F "commit=$GIT_SHA" \
                     -F "junit=@junit.xml" \
-                    -F "lcov=@coverage/lcov.info"
+                    -F "lcov=@coverage/lcov.info" \
+                    | tee onion_response.json
+
+            # Upload response + reports as artifacts so you can inspect what got sent
+            - name: Upload debug artifacts
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: onion-debug
+                  path: |
+                      onion_response.json
+                      junit.xml
+                      coverage/lcov.info
